@@ -20,10 +20,10 @@
     .set MODE_SYSTEM,               0x1F
 
 @ Constantes referentes aos endereços
-	.set USER_ADDRESS,				0x77812000      @ Endereço do código de usuário
-	.set STACK_POINTER_IRQ,			0x7E000000      @ Endereço inicial da pilha do modo IRQ
-	.set STACK_POINTER_SUPERVISOR,	0x7F000000      @ Endereço inicial da pilha do modo Supervisor
-	.set STACK_POINTER_USER, 		0x80000000      @ Endereço inicial da pilha do modo Usuário
+    .set USER_ADDRESS,              0x77812000      @ Endereço do código de usuário
+    .set STACK_POINTER_IRQ,         0x7E000000      @ Endereço inicial da pilha do modo IRQ
+    .set STACK_POINTER_SUPERVISOR,  0x7F000000      @ Endereço inicial da pilha do modo Supervisor
+    .set STACK_POINTER_USER,        0x80000000      @ Endereço inicial da pilha do modo Usuário
 
 @ Constantes Referentes ao TZIC
     .set TZIC_BASE,                 0x0FFFC000
@@ -55,13 +55,13 @@
 .section .iv,"a"
 _start:
 interrupt_vector:
-	b reset_handler        @ Rotina utilizada para interrupção RESET
+    b reset_handler        @ Rotina utilizada para interrupção RESET
 
 .org 0x08                  @ 0x8 --> salto para rotina de tratamento de syscalls (interrupções svc)
-	b svc_handler          @ Rotina utilizada para interrupção SVC
+    b svc_handler          @ Rotina utilizada para interrupção SVC
 
 .org 0x18                  @ 0x18 --> salto para rotina de tratamento de interrupções do tipo IRQ
-	b irq_handler          @ Rotina utilizada para interrupção IRQ (GPT, ...)
+    b irq_handler          @ Rotina utilizada para interrupção IRQ (GPT, ...)
 
 
 
@@ -115,7 +115,7 @@ reset_handler:
     ORR    R0, R0, #0x12               @ Set the mode bits to FIQ mode
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in SVC mode    @ inicializar a pilha
-    ldr r13, =STACK_IRQ
+    ldr r13, =STACK_POINTER_IRQ
 
     @ Inicializa a pilha do modo IRQ
     MRS    R0, CPSR                    @ Read the CPSR
@@ -123,7 +123,7 @@ reset_handler:
     ORR    R0, R0, #0x12               @ Set the mode bits to FIQ mode
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in FIQ mode    @ inicializar a pilha
-    ldr r13, =STACK_IRQ
+    ldr r13, =STACK_POINTER_IRQ
 
 @    3) ----------- Configuração dos periféricos (GPT/GPIO) -------------------
     @ Configuração GPT
@@ -146,25 +146,25 @@ reset_handler:
     @ Configuração GPIO
     ldr r0, =GPIO_GDIR
     ldr r1, =0xFFFC003E
-    str r1, r0 
+    str r1, [r0] 
 
     ldr r0, =GPIO_DR
     mov r1, #0x0
-    str r1, r0
+    str r1, [r0]
 
 @    4) ----------- Configuração do TZIC  -------------------------------------
     @ Liga o controlador de interrupcoes
     @ R1 <= TZIC_BASE
-    ldr	r1, =TZIC_BASE
+    ldr r1, =TZIC_BASE
 
     @ Configura interrupcao 39 do GPT como nao segura
-    mov	r0, #(1 << 7)
-    str	r0, [r1, #TZIC_INTSEC1]
+    mov r0, #(1 << 7)
+    str r0, [r1, #TZIC_INTSEC1]
 
     @ Habilita interrupcao 39 (GPT)
     @ reg1 bit 7 (gpt)
-    mov	r0, #(1 << 7)
-    str	r0, [r1, #TZIC_ENSET1]
+    mov r0, #(1 << 7)
+    str r0, [r1, #TZIC_ENSET1]
 
     @ Configure interrupt39 priority as 1
     @ reg9, byte 3
@@ -179,8 +179,8 @@ reset_handler:
     str r0, [r1, #TZIC_PRIOMASK]
 
     @ Habilita o controlador de interrupcoes
-    mov	r0, #1
-    str	r0, [r1, #TZIC_INTCTRL]
+    mov r0, #1
+    str r0, [r1, #TZIC_INTCTRL]
 
 
 @    5) ----------- Execução de código de usuário -----------------------------
@@ -190,8 +190,16 @@ reset_handler:
     ORR    R0, R0, #0x10               @ Set the mode bits to USER mode
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in USER mode    @ inicializar a pilha
-    ldr r13, =STACK_USER
+    ldr r13, =STACK_POINTER_USER
+    mov r7,#20
+    mov r0,#1
+    mov r1,#60
+    SVC 0x0
 
+    mov r7,#20
+    mov r0,#0
+    mov r1,#60
+    SVC 0x0
     ldr r4, =USER_ADDRESS
     bx r4
 
@@ -226,7 +234,7 @@ set_motor_speed:
     beq esq_set_motor_speed
     mov r0, #-1
 
-    b end_motor
+    b end_set_motor_speed
     dir_set_motor_speed:
         mov r0, #-2
         cmp r1, #63
@@ -236,19 +244,28 @@ set_motor_speed:
         ldr r2, [r0]
         ldr r3, =0xFE000000
         bic r2, r2, r3
-        orr r2, r2, r1 lsl #26
-        str r2, [r0]
+        lsl r1, r1, #26
+        orr r2, r2, r1
+        str r2, [r0] 
 
         mov r0, #0
-        b end_motor
+        b end_set_motor_speed
 
     esq_set_motor_speed:
         mov r0, #-2
         cmp r1, #63
         bgt end_set_motor_speed
 
+        ldr r0, =GPIO_DR
+        ldr r2, [r0]
+        ldr r3, =0x1FC0000
+        bic r2, r2, r3
+        lsl r1, r1, #19
+        orr r2, r2, r1
+        str r2, [r0] 
+
         mov r0, #0
-        b end_motor
+        b end_set_motor_speed
 
 end_set_motor_speed:
     mov pc, lr
