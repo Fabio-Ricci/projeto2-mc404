@@ -109,8 +109,21 @@ reset_handler:
 
 @   2) ----------- Inicialização das pilhas modos de operação  ---------------
     @ Você pode inicializar as pilhas aqui (ou, pelo menos, antes de executar o código do usuário)
+    @ Inicializa a pilha do modo SVC
+    MRS    R0, CPSR                    @ Read the CPSR
+    BIC    R0, R0, #0x1F               @ Clear the mode bits
+    ORR    R0, R0, #0x12               @ Set the mode bits to FIQ mode
+    MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
+                                       @ now in SVC mode    @ inicializar a pilha
+    ldr r13, =STACK_IRQ
 
-
+    @ Inicializa a pilha do modo IRQ
+    MRS    R0, CPSR                    @ Read the CPSR
+    BIC    R0, R0, #0x1F               @ Clear the mode bits
+    ORR    R0, R0, #0x12               @ Set the mode bits to FIQ mode
+    MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
+                                       @ now in FIQ mode    @ inicializar a pilha
+    ldr r13, =STACK_IRQ
 
 @    3) ----------- Configuração dos periféricos (GPT/GPIO) -------------------
     @ Configuração GPT
@@ -131,7 +144,13 @@ reset_handler:
     str r3, [r0]
 
     @ Configuração GPIO
+    ldr r0, =GPIO_GDIR
+    ldr r1, =0xFFFC003E
+    str r1, r0 
 
+    ldr r0, =GPIO_DR
+    mov r1, #0x0
+    str r1, r0
 
 @    4) ----------- Configuração do TZIC  -------------------------------------
     @ Liga o controlador de interrupcoes
@@ -165,7 +184,14 @@ reset_handler:
 
 
 @    5) ----------- Execução de código de usuário -----------------------------
+    @ Inicializa a pilha do modo USER
+    MRS    R0, CPSR                    @ Read the CPSR
+    BIC    R0, R0, #0x1F               @ Clear the mode bits
+    ORR    R0, R0, #0x10               @ Set the mode bits to USER mode
+    MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
+                                       @ now in USER mode    @ inicializar a pilha
     ldr r13, =STACK_USER
+
     ldr r4, =USER_ADDRESS
     bx r4
 
@@ -174,12 +200,63 @@ reset_handler:
 @   As funções na camada BiCo fazem syscalls que são tratadas por essa rotina
 @   Esta rotina deve, determinar qual syscall foi realizada e realizar alguma ação (escrever nos motores, ler contador de tempo, ....)
 svc_handler:
+    cmp r7, #21
+    beq read_sonar
+    cmp r7, #20 
+    beq set_motor_speed
+    cmp r7, #17
+    beq get_time
+    cmp r7, #18
+    beq set_time
 
+    movs pc, lr
 
 @   Rotina para o tratamento de interrupções IRQ
 @   Sempre que uma interrupção do tipo IRQ acontece, esta rotina é executada. O GPT, quando configurado, gera uma interrupção do tipo IRQ. Neste caso, o contador de tempo pode ser incrementado (este incremento corresponde a 1 unidade de tempo do seu sistema)
 irq_handler:
 
+    movs pc, lr
+
+read_sonar:
+
+set_motor_speed:
+    cmp r0, #1
+    beq dir_set_motor_speed
+    cmp r0, #0
+    beq esq_set_motor_speed
+    mov r0, #-1
+
+    b end_motor
+    dir_set_motor_speed:
+        mov r0, #-2
+        cmp r1, #63
+        bgt end_set_motor_speed
+
+        ldr r0, =GPIO_DR
+        ldr r2, [r0]
+        ldr r3, =0xFE000000
+        bic r2, r2, r3
+        orr r2, r2, r1 lsl #26
+        str r2, [r0]
+
+        mov r0, #0
+        b end_motor
+
+    esq_set_motor_speed:
+        mov r0, #-2
+        cmp r1, #63
+        bgt end_set_motor_speed
+
+        mov r0, #0
+        b end_motor
+
+end_set_motor_speed:
+    mov pc, lr
+
+
+get_time:
+
+set_time:
 
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @@      Seção de Dados                        @@
