@@ -1,12 +1,17 @@
-.global set_motor_speed
-.global read_sonar
-.global set_time
-.global get_time
+.org 0x0
 .align 4
+.text
+.globl set_motor_speed
+.globl read_sonar
+.globl set_time
+.globl get_time
 
 set_motor_speed:
 	push {lr}
 	mov r7, #20
+	@ldr r2, [r0]
+	@ldr r1, [r0, #1]
+	@mov r0, r2
 	svc 0x0
 	pop {lr}
 	mov pc, lr
