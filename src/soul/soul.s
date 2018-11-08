@@ -193,6 +193,7 @@ reset_handler:
     ORR    R0, R0, #0x10               @ Set the mode bits to USER mode
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in USER mode    @ inicializar a pilha
+
     ldr r13, =STACK_POINTER_USER
     ldr r4, =USER_ADDRESS
     bx r4
