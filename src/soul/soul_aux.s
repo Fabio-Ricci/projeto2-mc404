@@ -115,7 +115,7 @@ reset_handler:
     ORR    R0, R0, #0x13               @ Set the mode bits to FIQ mode
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in SVC mode    @ inicializar a pilha
-    ldr r13, =STACK_POINTER_IRQ
+    ldr r13, =STACK_POINTER_SUPERVISOR
 
     @ Inicializa a pilha do modo IRQ
     MRS    R0, CPSR                    @ Read the CPSR
@@ -182,6 +182,9 @@ reset_handler:
     mov r0, #1
     str r0, [r1, #TZIC_INTCTRL]
 
+    @ habilita interrupções
+    ldr r0, =MODE_SUPERVISOR
+    msr CPSR_c, r0
 
 @    5) ----------- Execução de código de usuário -----------------------------
     @ Inicializa a pilha do modo USER
@@ -191,36 +194,6 @@ reset_handler:
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in USER mode    @ inicializar a pilha
     ldr r13, =STACK_POINTER_USER
-   
-
-    mov r7,#20
-    mov r0,#1
-    mov r1,#0
-    svc 0x0
-
-
-    mov r7,#20
-    mov r0,#0
-    mov r1,#0
-    svc 0x0
-
-loop_test:
-    mov r7, #17
-    svc 0x0
-    mov r1, r0
-    
-    mov r7,#20
-    mov r0,#1
-    svc 0x0
-
-    mov r7,#20
-    mov r0,#0
-    svc 0x0
-
-    b loop_test
-exit:  
-
-
     ldr r4, =USER_ADDRESS
     bx r4
 
@@ -229,27 +202,35 @@ exit:
 @   As funções na camada BiCo fazem syscalls que são tratadas por essa rotina
 @   Esta rotina deve, determinar qual syscall foi realizada e realizar alguma ação (escrever nos motores, ler contador de tempo, ....)
 svc_handler:
-    @push {lr}
+    push {lr}
     cmp r7, #21
-    beq read_sonar
+    bleq read_sonar
     cmp r7, #20 
-    beq set_motor_speed
+    bleq set_motor_speed
     cmp r7, #17
-    beq get_time
+    bleq get_time
     cmp r7, #18
-    beq set_time
+    bleq set_time
 
    
-    @pop {lr}
+    pop {lr}
     movs pc, lr
 
 @   Rotina para o tratamento de interrupções IRQ
 @   Sempre que uma interrupção do tipo IRQ acontece, esta rotina é executada. O GPT, quando configurado, gera uma interrupção do tipo IRQ. Neste caso, o contador de tempo pode ser incrementado (este incremento corresponde a 1 unidade de tempo do seu sistema)
 irq_handler:
+    push {r0-r3}
     ldr r0, =counter
     ldr r1, [r0]
     add r1, r1, #1
     str r1, [r0]
+
+    sub lr, lr, #4
+
+    mov r3, #0x1
+    ldr r2, =GPT_SR
+    str r3, [r2]
+    pop {r0-r3}
     movs pc, lr
 
 read_sonar:
@@ -354,7 +335,8 @@ end_set_motor_speed:
     mov pc, lr
 
 get_time:
-    ldr r0, =counter    
+    ldr r0, =counter 
+    ldr r0, [r0]   
     mov pc, lr
 
 set_time:
