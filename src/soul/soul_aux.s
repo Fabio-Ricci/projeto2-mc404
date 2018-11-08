@@ -195,39 +195,30 @@ reset_handler:
 
     mov r7,#20
     mov r0,#1
-    mov r1,#60
+    mov r1,#0
     svc 0x0
 
 
     mov r7,#20
     mov r0,#0
-    mov r1,#60
+    mov r1,#0
     svc 0x0
 
-    mov r7, #21
-    mov r0, #3
+loop_test:
+    mov r7, #17
     svc 0x0
-loop_teste_sonar:
-    cmp r0, #50
-    blt fim_pqp
-    ldr r2,=penis
-    str r0,[r2]    
-    mov r7, #21
-    mov r0, #3
-    svc 0x0
-    b loop_teste_sonar
-    fim_pqp:
-
+    mov r1, r0
+    
     mov r7,#20
     mov r0,#1
-    mov r1,#0
     svc 0x0
 
     mov r7,#20
     mov r0,#0
-    mov r1,#0
     svc 0x0
-  
+
+    b loop_test
+exit:  
 
 
     ldr r4, =USER_ADDRESS
@@ -255,7 +246,10 @@ svc_handler:
 @   Rotina para o tratamento de interrupções IRQ
 @   Sempre que uma interrupção do tipo IRQ acontece, esta rotina é executada. O GPT, quando configurado, gera uma interrupção do tipo IRQ. Neste caso, o contador de tempo pode ser incrementado (este incremento corresponde a 1 unidade de tempo do seu sistema)
 irq_handler:
-
+    ldr r0, =counter
+    ldr r1, [r0]
+    add r1, r1, #1
+    str r1, [r0]
     movs pc, lr
 
 read_sonar:
@@ -277,7 +271,7 @@ read_sonar:
     bic r2, r2, #0x2
     str r2, [r0]
 
-    ldr r2, =100000
+    ldr r2, =50000
     loop1_read_sonar:
         cmp r2, #0
         sub r2, r2, #1
@@ -289,7 +283,7 @@ read_sonar:
     orr r2, r2, #2
     str r2, [r0]
 
-    ldr r2, =100000
+    ldr r2, =50000
     loop2_read_sonar:
         cmp r2, #0
         sub r2, r2, #1
@@ -359,10 +353,14 @@ set_motor_speed:
 end_set_motor_speed:
     mov pc, lr
 
-
 get_time:
+    ldr r0, =counter    
+    mov pc, lr
 
 set_time:
+    ldr r1, =counter
+    str r0, [r1]
+    mov pc, lr
 
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @@      Seção de Dados                        @@
@@ -370,6 +368,4 @@ set_time:
 @ Nesta seção ficam todas as váriaveis utilizadas para execução do código deste arquivo (.word / .skip)
 .align 4
 .data
-.org 0x77801800 
-penis:.skip 4
 counter: .word 0x00000000
