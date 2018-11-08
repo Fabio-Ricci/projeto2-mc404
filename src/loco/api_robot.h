@@ -26,7 +26,7 @@ typedef struct
  *   * -1 Invalid Motor
  *   * -2 Invalid Speed
  */
-int set_motor_speed(motor_cfg_t* motor);
+int set_motor_speed(unsigned char id, unsigned char speed);
 
 
 /**************************************************************/
