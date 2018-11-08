@@ -112,7 +112,7 @@ reset_handler:
     @ Inicializa a pilha do modo SVC
     MRS    R0, CPSR                    @ Read the CPSR
     BIC    R0, R0, #0x1F               @ Clear the mode bits
-    ORR    R0, R0, #0x12               @ Set the mode bits to FIQ mode
+    ORR    R0, R0, #0x13               @ Set the mode bits to FIQ mode
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in SVC mode    @ inicializar a pilha
     ldr r13, =STACK_POINTER_IRQ
@@ -191,15 +191,45 @@ reset_handler:
     MSR    CPSR_c, R0                  @ Update the control bits in the CPSR
                                        @ now in USER mode    @ inicializar a pilha
     ldr r13, =STACK_POINTER_USER
+   
+
     mov r7,#20
     mov r0,#1
     mov r1,#60
-    SVC 0x0
+    svc 0x0
+
 
     mov r7,#20
     mov r0,#0
     mov r1,#60
-    SVC 0x0
+    svc 0x0
+
+    mov r7, #21
+    mov r0, #3
+    svc 0x0
+loop_teste_sonar:
+    cmp r0, #50
+    blt fim_pqp
+    ldr r2,=penis
+    str r0,[r2]    
+    mov r7, #21
+    mov r0, #3
+    svc 0x0
+    b loop_teste_sonar
+    fim_pqp:
+
+    mov r7,#20
+    mov r0,#1
+    mov r1,#0
+    svc 0x0
+
+    mov r7,#20
+    mov r0,#0
+    mov r1,#0
+    svc 0x0
+  
+
+
     ldr r4, =USER_ADDRESS
     bx r4
 
@@ -208,6 +238,7 @@ reset_handler:
 @   As funções na camada BiCo fazem syscalls que são tratadas por essa rotina
 @   Esta rotina deve, determinar qual syscall foi realizada e realizar alguma ação (escrever nos motores, ler contador de tempo, ....)
 svc_handler:
+    @push {lr}
     cmp r7, #21
     beq read_sonar
     cmp r7, #20 
@@ -217,6 +248,8 @@ svc_handler:
     cmp r7, #18
     beq set_time
 
+   
+    @pop {lr}
     movs pc, lr
 
 @   Rotina para o tratamento de interrupções IRQ
@@ -226,19 +259,75 @@ irq_handler:
     movs pc, lr
 
 read_sonar:
+    mov r1,r0
+    mov r0,#-1
+    
+    cmp r1,#15
+    bhi end_read_sonar
+    
+    ldr r0,=GPIO_DR
+    ldr r2,[r0]
+    ldr r3,=0x3C
+    bic r2, r2, r3
+    lsl r1, r1, #2
+    orr r2, r2, r1
+    str r2, [r0]
+
+    ldr r2,[r0]
+    bic r2, r2, #0x2
+    str r2, [r0]
+
+    ldr r2, =100000
+    loop1_read_sonar:
+        cmp r2, #0
+        sub r2, r2, #1
+        bhi loop1_read_sonar
+
+    ldr r2,[r0]
+    ldr r3,=0x2
+    bic r2, r2, r3
+    orr r2, r2, #2
+    str r2, [r0]
+
+    ldr r2, =100000
+    loop2_read_sonar:
+        cmp r2, #0
+        sub r2, r2, #1
+        bhi loop2_read_sonar
+
+    ldr r2,[r0]
+    bic r2, r2, #0x2
+    str r2, [r0]
+
+    loop3_read_sonar:
+        ldr r0,=GPIO_DR
+        ldr r2,[r0]
+        ldr r3, =0xfffffffe
+        bic r2, r2, r3
+        cmp r2, #1
+        bne loop3_read_sonar
+
+    ldr r2,[r0]
+    ldr r3,=0xfffc003f
+    bic r2, r2, r3
+    lsr r2, r2, #6
+    mov r0, r2
+
+    end_read_sonar:
+        mov pc, lr
 
 set_motor_speed:
-    cmp r0, #1
-    beq dir_set_motor_speed
     cmp r0, #0
+    beq dir_set_motor_speed
+    cmp r0, #1
     beq esq_set_motor_speed
     mov r0, #-1
 
     b end_set_motor_speed
-    dir_set_motor_speed:
+    esq_set_motor_speed:
         mov r0, #-2
         cmp r1, #63
-        bgt end_set_motor_speed
+        bhi end_set_motor_speed
 
         ldr r0, =GPIO_DR
         ldr r2, [r0]
@@ -251,10 +340,10 @@ set_motor_speed:
         mov r0, #0
         b end_set_motor_speed
 
-    esq_set_motor_speed:
+    dir_set_motor_speed:
         mov r0, #-2
         cmp r1, #63
-        bgt end_set_motor_speed
+        bhi end_set_motor_speed
 
         ldr r0, =GPIO_DR
         ldr r2, [r0]
@@ -279,5 +368,8 @@ set_time:
 @@      Seção de Dados                        @@
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @ Nesta seção ficam todas as váriaveis utilizadas para execução do código deste arquivo (.word / .skip)
-
+.align 4
+.data
+.org 0x77801800 
+penis:.skip 4
 counter: .word 0x00000000
