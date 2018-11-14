@@ -135,7 +135,7 @@ reset_handler:
     ldr r0, =GPT_PR
     str r3, [r0]
 
-    mov r3, #0x100
+    mov r3, #100
     ldr r0, =GPT_OCR1
     str r3, [r0]
 
@@ -252,7 +252,7 @@ read_sonar:
     bic r2, r2, #0x2
     str r2, [r0]
 
-    ldr r2, =50000
+    ldr r2, =100
     loop1_read_sonar:
         cmp r2, #0
         sub r2, r2, #1
@@ -264,7 +264,7 @@ read_sonar:
     orr r2, r2, #2
     str r2, [r0]
 
-    ldr r2, =50000
+    ldr r2, =100
     loop2_read_sonar:
         cmp r2, #0
         sub r2, r2, #1
