@@ -46,43 +46,44 @@ int _start() {
 		}
 	}
 	
-	set_motor_speed(1, 20);
-	set_motor_speed(0, 20);
+	set_motor_speed(1, 8);
+	set_motor_speed(0, 8);
 
 	while(1)
 	{
 		
 		s1 = read_sonar(7);
 		s2 = read_sonar(4);
+		s3 = read_sonar(6);
 
-		if(s2<1000)
+		if (s2<1000)
 		{
 			set_motor_speed(1, 0);
 			set_motor_speed(0, 8);
-			while(1)
+			while (1) 
 			{
 				s2 = read_sonar(4);
 				if(s2>1200)
 				{
-					set_motor_speed(1, 20);
-					set_motor_speed(0, 20);
+					set_motor_speed(1, 8);
+					set_motor_speed(0, 8);
 					break;	
 				}
 			}
 		}
-		if(s1>400)
+		if (s1>500 && s3>500)
 		{
-			set_motor_speed(0, 7);
-			set_motor_speed(1, 10);
-		}else
-		if(s1<350)
+			set_motor_speed(0, 4);
+			set_motor_speed(1, 8);
+		} else
+		if (s1<40 || s3<400)
 		{
-			set_motor_speed(1, 7);
-			set_motor_speed(0, 10);
-		}else
+			set_motor_speed(1, 4);
+			set_motor_speed(0, 8);
+		} else
 		{
-			set_motor_speed(1, 20);
-			set_motor_speed(0, 20);
+			set_motor_speed(1, 8);
+			set_motor_speed(0, 8);
 		}
 
 		
