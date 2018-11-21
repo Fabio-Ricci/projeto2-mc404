@@ -1,8 +1,8 @@
 #include "api_robot.h"
 
 int _start() {
-	set_motor_speed(0, 10);
-	set_motor_speed(1, 10);
+	setMotor(0, 10);
+	setMotor(1, 10);
 	int actualTime = get_time();
 	int timeBase = actualTime;
 	int timeBaseAux;
@@ -19,45 +19,51 @@ int _start() {
 		set_time(0);
 
 		/*vira*/
-		if (!wall) {
+		if (!wall) { // se nao encontrou parede, vira 90 graus para a direita
 			actualTime = get_time();
 			timeBase = actualTime;
-			set_motor_speed(0, 0);
+			setMotor(0, 0);
 			while (actualTime < timeBase + 1950) {
 				actualTime = get_time();
 			}
-			set_motor_speed(0, 10);
+			setMotor(0, 10);
 		}
 		/*reto*/
 		actualTime = get_time();
 		timeBase = actualTime;	
 		aux = actualTime;
-		while (actualTime < timeBase + i) {
+		while (actualTime < timeBase + i) { // segue reto até actualTime + i
 			if (actualTime != aux) {
 				aux = actualTime;
-				sonar3 = read_sonar(3);
+				sonar3 = read_sonar(3); // sonares dianteiros
 				sonar4 = read_sonar(4);
 			}
-			if (sonar3 < 1500 || sonar4 < 1500) {
+			if (sonar3 < 1500 || sonar4 < 1500) { // se esta perto da parede
 				/*sonar*/
-				wall = 1;
+				wall = 1; // encontrou parede
 				actualTime = get_time();
 				timeBaseAux = actualTime;
-				set_motor_speed(0, 0);
-				while (actualTime < timeBaseAux + 1950){
+				setMotor(0, 0);
+				while (actualTime < timeBaseAux + 1950){ // vira 90 graus para a direita
 					actualTime = get_time();
 				}
-				set_motor_speed(0, 10);
-				sonar3 = read_sonar(3);
+				setMotor(0, 10);
+				sonar3 = read_sonar(3); // le os sonares novamente
 				sonar4 = read_sonar(4);
-				break;
+				break; // cancela a iteracao atual e passa para a proxima
 			} else {
-				wall = 0;
+				wall = 0; // nao encontrou parede
 			}
 			actualTime = get_time();
 		}
 		i++;
 	}
-
 	return 0;
+}
+
+void setMotor(int m, int v) {
+	motor_cfg_t motor;
+	motor.id = m;
+	motor.speed = v;
+	set_motor_speed(&motor);
 }
